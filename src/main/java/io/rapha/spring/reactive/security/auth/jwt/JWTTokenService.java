@@ -24,6 +24,8 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.time.Period;
@@ -38,6 +40,13 @@ import java.util.stream.Collectors;
  */
 public class JWTTokenService {
 
+    private static final Logger log = LoggerFactory.getLogger(JWTTokenService.class);
+
+    /**
+     * The issuer that mints these tokens; re-checked when a token is presented.
+     */
+    public static final String ISSUER = "rapha.io";
+
     /**
      * Create and sign a JWT object using information from the current
      * authenticated principal
@@ -51,11 +60,9 @@ public class JWTTokenService {
         SignedJWT signedJWT;
         JWTClaimsSet claimsSet;
 
-        //TODO refactor this nasty code
-
         claimsSet = new JWTClaimsSet.Builder()
                 .subject(subject)
-                .issuer("rapha.io")
+                .issuer(ISSUER)
                 .expirationTime(new Date(getExpiration()))
                 .claim("roles", authorities
                         .stream()
@@ -69,7 +76,7 @@ public class JWTTokenService {
         try {
             signedJWT.sign(new JWTCustomSigner().getSigner());
         } catch (JOSEException e) {
-            e.printStackTrace();
+            log.error("Could not sign JWT", e);
         }
 
         return signedJWT.serialize();

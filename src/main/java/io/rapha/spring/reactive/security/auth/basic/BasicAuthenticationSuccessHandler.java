@@ -47,7 +47,6 @@ public class BasicAuthenticationSuccessHandler
     @Override
     public Mono<Void> onAuthenticationSuccess(WebFilterExchange webFilterExchange, Authentication authentication) {
         ServerWebExchange exchange = webFilterExchange.getExchange();
-        //TODO refactor this nasty implementation
         exchange.getResponse()
                 .getHeaders()
                 .add(HttpHeaders.AUTHORIZATION, getHttpAuthHeaderValue(authentication));

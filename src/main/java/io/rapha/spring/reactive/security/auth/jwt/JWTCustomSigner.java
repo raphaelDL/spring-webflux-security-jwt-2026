@@ -22,17 +22,23 @@ package io.rapha.spring.reactive.security.auth.jwt;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.KeyLengthException;
 import com.nimbusds.jose.crypto.MACSigner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *  Creates a JWTSigner using a simple secret string
  */
 public class JWTCustomSigner {
+
+    private static final Logger log = LoggerFactory.getLogger(JWTCustomSigner.class);
+
     private JWSSigner signer;
 
     public JWTCustomSigner() {
         try {
             this.signer = new MACSigner(JWTSecrets.DEFAULT_SECRET);
         } catch (KeyLengthException e) {
+            log.error("Could not build JWT signer", e);
             this.signer = null;
         }
     }

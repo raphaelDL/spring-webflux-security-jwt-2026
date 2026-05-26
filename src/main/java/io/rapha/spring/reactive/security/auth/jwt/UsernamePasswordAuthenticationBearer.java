@@ -38,11 +38,9 @@ import java.util.stream.Stream;
  */
 public class UsernamePasswordAuthenticationBearer {
 
-    public static Mono<Authentication> create(SignedJWT signedJWTMono) {
-        SignedJWT signedJWT = signedJWTMono;
+    public static Mono<Authentication> create(SignedJWT signedJWT) {
         String subject;
         String auths;
-        List authorities;
 
         try {
             subject = signedJWT.getJWTClaimsSet().getSubject();
@@ -50,11 +48,11 @@ public class UsernamePasswordAuthenticationBearer {
         } catch (ParseException e) {
             return Mono.empty();
         }
-        authorities = Stream.of(auths.split(","))
-                .map(a -> new SimpleGrantedAuthority(a))
+
+        List<SimpleGrantedAuthority> authorities = Stream.of(auths.split(","))
+                .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
 
-            return  Mono.justOrEmpty(new UsernamePasswordAuthenticationToken(subject, null, authorities));
-
+        return Mono.justOrEmpty(new UsernamePasswordAuthenticationToken(subject, null, authorities));
     }
 }

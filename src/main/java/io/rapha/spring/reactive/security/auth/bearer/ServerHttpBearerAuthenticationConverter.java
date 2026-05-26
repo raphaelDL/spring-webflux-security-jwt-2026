@@ -55,6 +55,6 @@ public class ServerHttpBearerAuthenticationConverter implements Function<ServerW
                    .filter(matchBearerLength)
                 .flatMap(isolateBearerValue)
                 .flatMap(jwtVerifier::check)
-                .flatMap(UsernamePasswordAuthenticationBearer::create).log();
+                .flatMap(UsernamePasswordAuthenticationBearer::create);
     }
 }
