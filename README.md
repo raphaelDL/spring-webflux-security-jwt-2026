@@ -1,5 +1,26 @@
 # Authentication and Authorization using JWT with Spring WebFlux and Spring Security Reactive
 
+## Modernized with Claude Code
+
+This repository is an ~8-year-old Spring WebFlux + JWT demo that was brought back
+to life with [Claude Code](https://claude.com/claude-code). Beyond refreshing the
+stack, Claude Code completed functionality the project was missing:
+
+- **Stack:** Spring Boot 2.1 → **4.0**, Java 8 → **21**, Spring Security 5 → **7**,
+  JUnit 4 → **5** — building with both Gradle and Maven.
+- **Found and fixed a latent bug:** the demo advertised role-based *authorization*,
+  but reactive method security was never enabled, so the `@PreAuthorize` rules were
+  silently ignored and any valid token could reach any endpoint. Method security is
+  now enabled and the role rules are actually enforced.
+- **Tests:** added coverage for the whole flow — login issues a JWT, a valid token
+  with the right role gets in, and insufficient-role (`403`), expired, malformed,
+  and untrusted-issuer tokens are all rejected.
+- **Cleanup:** real logging instead of `printStackTrace`, JWT issuer validation,
+  and assorted code-quality fixes.
+
+See **[OVERVIEW.md](OVERVIEW.md)** for a description of what the project does, or
+read on for the original step-by-step tutorial.
+
 ## Nice Docs to Read First
 
 Before getting started, I suggest you go through the following references:

@@ -23,6 +23,8 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.SignedJWT;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.text.ParseException;
@@ -39,6 +41,9 @@ import java.util.function.Predicate;
  * Verify that expiration date is valid
  */
 public class JWTCustomVerifier {
+
+    private static final Logger log = LoggerFactory.getLogger(JWTCustomVerifier.class);
+
     private JWSVerifier jwsVerifier;
 
     public JWTCustomVerifier() {
@@ -48,17 +53,23 @@ public class JWTCustomVerifier {
     public Mono<SignedJWT> check(String token) {
         return Mono.justOrEmpty(createJWS(token))
                 .filter(isNotExpired)
+                .filter(isFromTrustedIssuer)
                 .filter(validSignature);
     }
 
-    private Predicate<SignedJWT> isNotExpired = token ->
-            getExpirationDate(token).after(Date.from(Instant.now()));
+    private final Predicate<SignedJWT> isNotExpired = token -> {
+        Date expiration = getExpirationDate(token);
+        return expiration != null && expiration.after(Date.from(Instant.now()));
+    };
 
-    private Predicate<SignedJWT> validSignature = token -> {
+    private final Predicate<SignedJWT> isFromTrustedIssuer = token ->
+            JWTTokenService.ISSUER.equals(getIssuer(token));
+
+    private final Predicate<SignedJWT> validSignature = token -> {
         try {
             return token.verify(this.jwsVerifier);
         } catch (JOSEException e) {
-            e.printStackTrace();
+            log.warn("Could not verify JWT signature", e);
             return false;
         }
     };
@@ -67,7 +78,7 @@ public class JWTCustomVerifier {
         try {
             return new MACVerifier(JWTSecrets.DEFAULT_SECRET);
         } catch (JOSEException e) {
-            e.printStackTrace();
+            log.error("Could not build JWT verifier", e);
             return null;
         }
     }
@@ -76,7 +87,7 @@ public class JWTCustomVerifier {
         try {
             return SignedJWT.parse(token);
         } catch (ParseException e) {
-            e.printStackTrace();
+            log.warn("Could not parse JWT", e);
             return null;
         }
     }
@@ -86,7 +97,17 @@ public class JWTCustomVerifier {
             return token.getJWTClaimsSet()
                     .getExpirationTime();
         } catch (ParseException e) {
-            e.printStackTrace();
+            log.warn("Could not read expiration from JWT", e);
+            return null;
+        }
+    }
+
+    private String getIssuer(SignedJWT token) {
+        try {
+            return token.getJWTClaimsSet()
+                    .getIssuer();
+        } catch (ParseException e) {
+            log.warn("Could not read issuer from JWT", e);
             return null;
         }
     }
