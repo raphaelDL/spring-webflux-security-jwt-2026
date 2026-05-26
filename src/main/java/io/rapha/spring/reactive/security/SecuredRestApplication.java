@@ -94,16 +94,11 @@ public class SecuredRestApplication {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
 
         http
-                .authorizeExchange()
-                    .pathMatchers("/login", "/")
-                    .authenticated()
-                .and()
-                    .addFilterAt(basicAuthenticationFilter(), SecurityWebFiltersOrder.HTTP_BASIC)
-                       .authorizeExchange()
-                    .pathMatchers("/api/**")
-                    .authenticated()
-                .and()
-                    .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION);
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/login", "/").authenticated()
+                        .pathMatchers("/api/**").authenticated())
+                .addFilterAt(basicAuthenticationFilter(), SecurityWebFiltersOrder.HTTP_BASIC)
+                .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION);
 
         return http.build();
     }
