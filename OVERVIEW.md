@@ -37,15 +37,16 @@ the user's identity and roles.
 |-----------------|-----------------------------------------------------------|------------------------------------------|
 | `GET /`         | Welcome message                                           | Requires authentication (HTTP Basic)     |
 | `GET /login`    | Same message, but the response carries a freshly minted JWT in the `Authorization` header | Requires authentication (HTTP Basic) |
-| `GET /api/private` | `"Hello User!"`                                        | Requires a valid `Bearer` JWT            |
-| `GET /api/admin`   | `"Hello Admin!"`                                       | Requires a valid `Bearer` JWT            |
-| `GET /api/guest`   | `"Hello Guest!"`                                       | Requires a valid `Bearer` JWT            |
+| `GET /api/private` | `"Hello User!"`                                        | Valid `Bearer` JWT **and** `ROLE_USER`   |
+| `GET /api/admin`   | `"Hello Admin!"`                                       | Valid `Bearer` JWT **and** `ROLE_ADMIN`  |
+| `GET /api/guest`   | `"Hello Guest!"`                                       | Valid `Bearer` JWT **and** `ROLE_GUEST`  |
 
 All endpoints return a `FormattedMessage` (`{ "name": ..., "message": ... }`)
 emitted as a reactive `Flux`.
 
 The single in-memory user is **`user` / `user`**, holding the roles `USER` and
-`ADMIN`.
+`ADMIN` — so it can reach `/api/private` and `/api/admin`, but gets `403` on
+`/api/guest`, which is a quick way to see role-based authorization at work.
 
 ## How a request flows
 
@@ -78,13 +79,15 @@ sequenceDiagram
 
     C->>F: GET /api/admin  (Authorization: Bearer <jwt>)
     F->>Cv: Extract token from the Authorization header
-    Cv->>V: Verify signature + expiry
+    Cv->>V: Verify signature, expiry, and issuer
     alt token valid
         V-->>Cv: SignedJWT
         Cv->>Cv: Build Authentication from the "roles" claim
         Cv-->>F: Authentication
-        F->>Ctl: authorized → message body (HTTP 200)
-    else token missing / malformed / expired / bad signature
+        F->>Ctl: forward request (now authenticated)
+        Ctl->>Ctl: @PreAuthorize checks the required role
+        Ctl-->>C: 200 with body, or 403 if the role is missing
+    else token missing / malformed / expired / wrong issuer / bad signature
         V-->>Cv: empty
         Cv-->>F: no Authentication
         F-->>C: HTTP 401 Unauthorized
@@ -109,6 +112,11 @@ The filter that issues tokens and the filter that consumes them are deliberately
 separate, which mirrors how a real login service and resource server divide the
 work.
 
+**Role-based authorization** is layered on top via `@EnableReactiveMethodSecurity`
+(on `SecuredRestApplication`), which activates the `@PreAuthorize("hasRole(...)")`
+rules on the controller. Reaching `/api/admin` therefore needs both a valid token
+*and* `ROLE_ADMIN`; a valid token without the required role is rejected with `403`.
+
 ## What the JWT contains
 
 Built and signed in `JWTTokenService` (`HS256`, shared secret):
@@ -118,9 +126,9 @@ Built and signed in `JWTTokenService` (`HS256`, shared secret):
 - `roles` — the user's authorities, comma-joined (e.g. `ROLE_USER,ROLE_ADMIN`)
 - `exp` — 24 hours from issue
 
-`JWTCustomVerifier` rejects a token unless it parses, is **unexpired**, and has a
-**valid signature** — otherwise it yields an empty result and the request is
-rejected with `401`.
+`JWTCustomVerifier` rejects a token unless it parses, is **unexpired**, comes from
+the **trusted issuer** (`rapha.io`), and has a **valid signature** — otherwise it
+yields an empty result and the request is rejected with `401`.
 
 ## Component map
 
@@ -174,18 +182,12 @@ curl -i localhost:8080/api/admin            # → 401
 
 Several shortcuts are intentional, to keep the example focused on the JWT flow:
 
-- **Authorization is enforced at the URL level only.** `/api/**` requires *a
-  valid token*, but it does **not** check roles. The `@PreAuthorize("hasRole(...)")`
-  annotations on the controller are illustrative — method security is not enabled
-  (`@EnableReactiveMethodSecurity` is absent), so they are currently **inert**.
-  As a result the `user` account (which lacks `GUEST`) can still call `/api/guest`.
-  Enabling method security would be a natural next exercise.
 - **Single hard-coded user** stored in memory via `MapReactiveUserDetailsService`.
 - **A fixed, in-source HMAC secret** (`JWTSecrets.DEFAULT_SECRET`) and
   `User.withDefaultPasswordEncoder()` — both flagged by Spring as unsafe outside
-  samples.
-- **No token refresh / revocation**, no HTTPS enforcement, and errors in the JWT
-  classes are swallowed (`e.printStackTrace()`).
+  samples. In a real system the secret would come from configuration / a secret
+  manager, and users from a real store.
+- **No token refresh / revocation** and no HTTPS enforcement.
 
 These are good starting points if you want to extend the demo toward something
 production-shaped.
