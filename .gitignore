@@ -1,6 +1,7 @@
 # Build output
 target/
 build/
+.gradle/
 !gradle/wrapper/gradle-wrapper.jar
 
 # IDE
