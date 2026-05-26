@@ -52,11 +52,10 @@ Below there's a simple way to define Basic Authentication with Spring Security. 
 @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
-            .authorizeExchange()
-                .anyExchange().authenticated()
-                .and()
-            .httpBasic(); // Pure basic is not enough for us!
-            
+            .authorizeExchange(exchanges -> exchanges
+                .anyExchange().authenticated())
+            .httpBasic(Customizer.withDefaults()); // Pure basic is not enough for us!
+
         return http.build();
     }
 ```
@@ -140,11 +139,9 @@ Add this to our `ServerHttpSecurity`:
 ```java
 ...
 http
-                .authorizeExchange()
-                    .pathMatchers("/login", "/")
-                    .authenticated()
-                .and()
-                    .addFilterAt(basicAuthenticationFilter, SecurityWebFiltersOrder.HTTP_BASIC)
+                .authorizeExchange(exchanges -> exchanges
+                    .pathMatchers("/login", "/").authenticated())
+                .addFilterAt(basicAuthenticationFilter, SecurityWebFiltersOrder.HTTP_BASIC)
 ...
 ```
 
@@ -203,16 +200,11 @@ Finally chain this filter in the `ServerHttpSecurity` configuration object:
 public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
 
         http
-                .authorizeExchange()
-                    .pathMatchers("/login", "/")
-                    .authenticated()
-                .and()
-                    .addFilterAt(basicAuthenticationFilter(), SecurityWebFiltersOrder.HTTP_BASIC)
-                       .authorizeExchange()
-                    .pathMatchers("/api/**")
-                    .authenticated()
-                .and()
-                    .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION);
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/login", "/").authenticated()
+                        .pathMatchers("/api/**").authenticated())
+                .addFilterAt(basicAuthenticationFilter(), SecurityWebFiltersOrder.HTTP_BASIC)
+                .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION);
 
         return http.build();
     }
