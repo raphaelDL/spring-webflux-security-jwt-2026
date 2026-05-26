@@ -1,17 +1,17 @@
 # Authentication and Authorization using JWT with Spring WebFlux and Spring Security Reactive
 
-### Nice Docs to Read First
+## Nice Docs to Read First
 
-Before getting started I suggest you go through the next reference 
+Before getting started, I suggest you go through the following references:
 
-[Spring Webflux](https://docs.spring.io/spring/docs/5.1.0.RELEASE/spring-framework-reference/web-reactive.html#spring-webflux)
+[Spring WebFlux](https://docs.spring.io/spring-framework/reference/web/webflux.html)
 
 [Spring Security Reactive](https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#reactive-applications)
 
 [Spring Security Architecture](https://spring.io/guides/topicals/spring-security-architecture)
 
-### Enable Spring WebFlux Security
-First enable Webflux Security in your application  with `@EnableWebFluxSecurity`
+## Enable Spring WebFlux Security
+First enable WebFlux Security in your application with `@EnableWebFluxSecurity`
 
 ```java
 @SpringBootApplication
@@ -21,9 +21,9 @@ public class SecuredRestApplication {
 }
 ```
 
-### Create an InMemory UserDetailsService
+## Create an InMemory UserDetailsService
 
-Define a custom `UserDetailsService` bean where an User with password and
+Define a custom `UserDetailsService` bean where a user with a password and
 initial roles is added:
 
 
@@ -39,14 +39,14 @@ initial roles is added:
     }
 ```
 
-In this example user information will be stored in memory using a `Map` but it can be replaced by different strategies.
+In this example user information will be stored in memory using a `Map`, but it can be replaced by different strategies.
 
-Before getting a Json Web Token an user should use another authentication mechanism, for example HTTP Basic Authentication and provided the right credentials a JWT will be issued which can be used to perform future API calls by changing the `Authetication` method from Basic to Bearer.
+Before getting a JSON Web Token, a user should use another authentication mechanism, for example HTTP Basic Authentication; provided the right credentials, a JWT will be issued, which can be used to perform future API calls by changing the `Authentication` method from Basic to Bearer.
 
 
-### Starting from Basic Authentication
+## Starting from Basic Authentication
 
-Below there's a simple way to define Basic Authentication with Spring Security. Customization is needed in order to return a JWT on succesful authentication.
+Below there's a simple way to define Basic Authentication with Spring Security. Customization is needed in order to return a JWT on successful authentication.
 
 ```java
 @Bean
@@ -60,12 +60,12 @@ Below there's a simple way to define Basic Authentication with Spring Security. 
     }
 ```
 
-### Inspect AuthenticationFilter, improvise, adapt  overcome
+## Inspect AuthenticationWebFilter, improvise, adapt, overcome
 
-With Spring Reactive, requests go through a chain of filters,  each filter can aprove or discard requests according to different rules. Advantage is taken to perform request authentication.
-Different types of `WebFilter` are grouped by a `WebFilterChain`, in Spring Security there's `AuthenticationWebFilter` which outlines how authentication should be performed on requests matching a criteria.
+With Spring Reactive, requests go through a chain of filters; each filter can approve or discard requests according to different rules. Advantage is taken to perform request authentication.
+Different types of `WebFilter` are grouped by a `WebFilterChain`; in Spring Security there's `AuthenticationWebFilter`, which outlines how authentication should be performed on requests matching certain criteria.
 
-`AuthenticationWebFilter` implements all the required behavior for Basic Authentication, take a look at it:
+`AuthenticationWebFilter` implements all the required behavior for Basic Authentication; take a look at it:
 
 
 ```java
@@ -87,13 +87,13 @@ public class AuthenticationWebFilter implements WebFilter {
 ....
 ```
 
-The behavior that needs to be changed is what happens once an user has been authenticated using user/password credentials.
-The `WebFilterChainServerAuthenticationSuccessHandler` will pass the request through the filter chain. A custom implementation is needed in this step where a Json Web Token is generated and added to the response, then the exchange will follow its way.
+The behavior that needs to be changed is what happens once a user has been authenticated using user/password credentials.
+The `WebFilterChainServerAuthenticationSuccessHandler` will pass the request through the filter chain. A custom implementation is needed in this step, where a JSON Web Token is generated and added to the response; the exchange then continues on its way.
 
 
-### Create custom SuccessHandler to make Basic Authentication return a Json Web Token
+## Create a custom SuccessHandler to make Basic Authentication return a JSON Web Token
 
-Create a custom `ServerAuthenticationSuccessHandler`, this handler is executed once the authentication with user/password has been successful,  it receives the current exchange and `Authentication` object. A JWT is generated using the `Exchange` and `Authentication` object.  In this way `BasicAuthenticationSuccessHandler` implements the desired behavior:
+Create a custom `ServerAuthenticationSuccessHandler`; this handler is executed once the authentication with user/password has been successful, and it receives the current exchange and `Authentication` object. A JWT is generated using the `Exchange` and `Authentication` object. In this way `BasicAuthenticationSuccessHandler` implements the desired behavior:
 
 ```java
 ...
@@ -108,12 +108,12 @@ Create a custom `ServerAuthenticationSuccessHandler`, this handler is executed o
     }
 ...
 ```
-The response from the current exchange is updated with the HTTP Authorization header with a new JWT that contains data from the `Authentication` object.
+The response from the current exchange is updated with an HTTP Authorization header that carries a new JWT containing data from the `Authentication` object.
 
 
-### Create a Basic Authentication filter that returns a JWT
+## Create a Basic Authentication filter that returns a JWT
 
-Now create a new `AuthenticationFilter` with a custom handler:
+Now create a new `AuthenticationWebFilter` with a custom handler:
 
 ```java
 ...
@@ -131,7 +131,7 @@ UserDetailsRepositoryReactiveAuthenticationManager authManager;
 ```
 
 
-### Add this filter to ServerHttpSecurity
+## Add this filter to ServerHttpSecurity
 
 
 Add this to our `ServerHttpSecurity`:
@@ -145,25 +145,25 @@ http
 ...
 ```
 
-The functionality that returns a JWT when authenticating using User and Password is now implemented.
+The functionality that returns a JWT when authenticating using a username and password is now implemented.
 
 
-## Handle Requests with Bearer token Authorization Header
+## Handle Requests with a Bearer Token Authorization Header
 
-Now let's build the functionality that will take a request with the HTTP Authorization Header containing a Bearer token.
-The same way the `AuthenticationWebFilter` was customized before, customize another to create a new filter.
+Now let's build the functionality that will handle a request whose HTTP Authorization header contains a Bearer token.
+Just as the `AuthenticationWebFilter` was customized before, we customize another one to create a new filter.
 
-When using JWT all information needed to authenticate and authorize a user lives within a token.
-Perform the next steps:
+When using JWT, all the information needed to authenticate and authorize a user lives within the token.
+Perform the following steps:
 
-Filter requests containing a Bearer token within its HTTP Authorization Header, verify that are well formed, confirm that it has a valid signature and then build an `Authorization` object with all information contained in the payload. If the JWT is invalid, there won't be `Authorization` resulting in an unauthorized response.
+Filter requests that contain a Bearer token in their HTTP Authorization header, verify that the token is well formed, confirm that it has a valid signature, and then build an `Authentication` object from all the information contained in the payload. If the JWT is invalid, no `Authentication` is produced, resulting in an unauthorized response.
 
-Because all information needed is contained in the JWT payload all invalid tokens will be rejected in the filtering step, but the contract defined by the `AuthenticationWebFilter` requires a non null `AuthenticationManager`. Create a dummy manager that will authenticate all exchanges. Why? Because all invalid JWT did not resulted in an authorization object and did not make it into this step.
+Because all the information needed is contained in the JWT payload, every invalid token is rejected in the filtering step; but the contract defined by `AuthenticationWebFilter` requires a non-null `AuthenticationManager`. Create a dummy manager that authenticates all exchanges. Why? Because invalid JWTs never produce an `Authentication` object and therefore never make it into this step.
 
 
-### Generate an Authentication object using only the information contained in the token
+## Generate an Authentication object using only the information contained in the token
 
-Create a converter `ServerHttpBearerAuthenticationConverter` that takes a request `ServerWebExchange` and returns an `Authorization` object created with the information extracted from the token:
+Create a converter `ServerHttpBearerAuthenticationConverter` that takes a `ServerWebExchange` and returns an `Authentication` object created with the information extracted from the token:
 
 ```java
 ...
@@ -178,9 +178,9 @@ Create a converter `ServerHttpBearerAuthenticationConverter` that takes a reques
 ...
 ```
 
-### Create a dummy AuthenticationManager
+## Create a dummy AuthenticationManager
 
-Now implement a dummy `AuthenticationManager` called  `BearerTokenReactiveAuthenticationManager`:
+Now implement a dummy `AuthenticationManager` called `BearerTokenReactiveAuthenticationManager`:
 
 ```java
 ...
@@ -191,9 +191,9 @@ Now implement a dummy `AuthenticationManager` called  `BearerTokenReactiveAuthen
 ...
 ```
 
-### Add the new filter to ServerHttpSecurity
+## Add the new filter to ServerHttpSecurity
 
-Finally chain this filter in the `ServerHttpSecurity` configuration object:
+Finally, chain this filter into the `ServerHttpSecurity` configuration object:
 
 ```java
 ...
@@ -212,7 +212,7 @@ public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http)
 ```
 
 
-### Create a REST Controller and configure access rules
+## Create a REST Controller and configure access rules
 
 ```java
 ...
@@ -226,7 +226,7 @@ public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http)
 ```
 
 
-### Run the Application
+## Run the Application
 
 With Maven
 ```shell
@@ -239,15 +239,15 @@ $ ./gradlew bootRun
 ```
 
 
-### Test it
+## Test it
 
 Login using HTTP Basic
 
 ```shell
-$ curl -v  -u user:user localhost:8080/login
+$ curl -v -u user:user localhost:8080/login
 ```
 
-Inspect the response contents and find the authorization header. 
+Inspect the response and find the Authorization header.
 It should look like:
 
 ```shell
@@ -257,11 +257,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1Ni.....
 Use that in another request:
 
 ```shell
-$ curl -v  -H "Authorization: Bearer eyJhbGciOiJIUzI1Ni....."  localhost:8080/api/admin
+$ curl -v -H "Authorization: Bearer eyJhbGciOiJIUzI1Ni....." localhost:8080/api/admin
 ```
 
-You should be able to consume the API
+You should be able to consume the API.
 
-### That's all
+## That's all
 
 Hope you enjoy it.
