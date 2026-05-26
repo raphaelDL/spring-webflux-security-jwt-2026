@@ -2,9 +2,11 @@
 
 ## Modernized with Claude Code
 
-This repository is an ~8-year-old Spring WebFlux + JWT demo that was brought back
-to life with [Claude Code](https://claude.com/claude-code). Beyond refreshing the
-stack, Claude Code completed functionality the project was missing:
+This is the modernized successor to the original, well-starred
+[`spring-webflux-security-jwt`](https://github.com/raphaelDL/spring-webflux-security-jwt)
+(~300★) — an ~8-year-old Spring WebFlux + JWT demo brought back to life with
+[Claude Code](https://claude.com/claude-code). Beyond refreshing the stack, Claude
+Code completed functionality the project was missing:
 
 - **Stack:** Spring Boot 2.1 → **4.0**, Java 8 → **21**, Spring Security 5 → **7**,
   JUnit 4 → **5** — building with both Gradle and Maven.
